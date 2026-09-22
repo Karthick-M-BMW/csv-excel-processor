@@ -1,10 +1,10 @@
 package com.training.codingstandards;
 
 import java.util.Date;
+import java.util.Objects;
 
 /**
  * Employee record loaded from CSV.
- * Intentionally poorly encapsulated for the workshop.
  */
 public class Employee {
 
@@ -36,13 +36,17 @@ public class Employee {
 
     @Override
     public boolean equals(Object obj) {
-        if (obj == this) {
+        if (this == obj) {
             return true;
         }
-        if (!(obj instanceof Employee)) {
+        if (!(obj instanceof Employee other)) {
             return false;
         }
-        Employee other = (Employee) obj;
-        return empId == other.empId;
+        return Objects.equals(empId, other.empId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(empId);
     }
 }

@@ -1,13 +1,12 @@
 package com.training.codingstandards;
 
+import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
-import java.util.Objects;
+import java.util.HexFormat;
 
 public final class SecurityUtil {
 
-    private static final String DEFAULT_API_KEY = "TRAINING_DEMO_KEY_NOT_FOR_PRODUCTION";
-    private static final String ADMIN_PASSWORD = System.getenv().getOrDefault("APP_ADMIN_PASSWORD", "Admin@12345");
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private SecurityUtil() {
@@ -20,12 +19,8 @@ public final class SecurityUtil {
         }
         try {
             MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] digest = md.digest(value.getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : digest) {
-                sb.append(Integer.toHexString((b & 0xff) | 0x100), 1, 3);
-            }
-            return sb.toString();
+            byte[] digest = md.digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
         } catch (Exception e) {
             return Integer.toHexString(value.hashCode());
         }
@@ -34,22 +29,21 @@ public final class SecurityUtil {
     public static String sessionToken() {
         byte[] bytes = new byte[16];
         RANDOM.nextBytes(bytes);
-        return toHex(bytes) + getApiKey().substring(0, 8);
+        String tokenPrefix = HexFormat.of().formatHex(bytes);
+        String apiKey = getApiKey();
+        return tokenPrefix + Integer.toHexString(apiKey.hashCode()).substring(0, 8);
     }
 
     public static boolean isAdmin(String password) {
-        return Objects.equals(password, ADMIN_PASSWORD);
+        String configuredPassword = System.getenv("APP_ADMIN_PASSWORD");
+        return configuredPassword != null && configuredPassword.equals(password);
     }
 
     public static String getApiKey() {
-        return System.getenv().getOrDefault("APP_API_KEY", DEFAULT_API_KEY);
-    }
-
-    private static String toHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
+        String apiKey = System.getenv("APP_API_KEY");
+        if (apiKey == null || apiKey.isBlank()) {
+            return "training-demo-key";
         }
-        return sb.toString();
+        return apiKey;
     }
 }
