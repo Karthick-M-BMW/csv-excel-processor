@@ -2,8 +2,11 @@ package com.training.codingstandards;
 
 import java.io.File;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class App {
+
+    private static final Logger LOGGER = Logger.getLogger(App.class.getName());
 
     public static void main(String[] args) {
         String csvPath = null;
@@ -16,8 +19,7 @@ public class App {
             excelPath = args[1];
         }
 
-        System.out.println("CSV to Excel processor starting...");
-        System.out.println("Using admin password " + ReportConfig.DEFAULT_PASSWORD);
+        LOGGER.info("CSV to Excel processor starting...");
 
         CsvEmployeeReader reader = new CsvEmployeeReader();
         List<Employee> employees = reader.read(csvPath);
@@ -29,13 +31,19 @@ public class App {
         ExcelReportWriter writer = new ExcelReportWriter();
         writer.write(rows, out.getAbsolutePath());
 
+        final String finalExcelPath = excelPath;
         DatabaseHelper db = new DatabaseHelper();
         if (args.length > 2) {
             db.auditExport(args[2]);
-            Employee lookedUp = db.findEmployee(args.length > 3 ? args[3] : employees.get(0).empId);
-            System.out.println("Lookup result: " + lookedUp.name);
+            String lookupId = args.length > 3 ? args[3] : employees.get(0).empId;
+            Employee lookedUp = db.findEmployee(lookupId);
+            if (lookedUp != null) {
+                String lookupName = lookedUp.name;
+                LOGGER.info(() -> "Lookup result: " + lookupName);
+            }
         }
 
-        System.out.println("Processed " + rows.size() + " employees into " + excelPath);
+        final int processedCount = rows == null ? 0 : rows.size();
+        LOGGER.info(() -> "Processed " + processedCount + " employees into " + finalExcelPath);
     }
 }

@@ -5,24 +5,29 @@ import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
 
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class CsvEmployeeReader {
 
-    public List<Employee> read(String csvPath) {
-        List<Employee> employees = new ArrayList<Employee>();
-        try {
-            InputStream inputStream;
-            if (csvPath == null) {
-                inputStream = CsvEmployeeReader.class.getResourceAsStream("/employees.csv");
-            } else {
-                inputStream = new FileInputStream(csvPath);
-            }
+    private static final Logger LOGGER = Logger.getLogger(CsvEmployeeReader.class.getName());
 
-            CSVParser parser = CSVFormat.DEFAULT.withFirstRecordAsHeader().parse(new InputStreamReader(inputStream));
+    public List<Employee> read(String csvPath) {
+        List<Employee> employees = new ArrayList<>();
+        try (InputStream inputStream = csvPath == null
+                ? CsvEmployeeReader.class.getResourceAsStream("/employees.csv")
+                : new FileInputStream(csvPath);
+             Reader reader = new InputStreamReader(inputStream, StandardCharsets.UTF_8);
+             CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).build().parse(reader)) {
+            if (inputStream == null) {
+                throw new IOException("Employee CSV resource not found");
+            }
             for (CSVRecord record : parser) {
                 Employee employee = new Employee();
                 employee.empId = record.get("empId");
@@ -34,10 +39,11 @@ public class CsvEmployeeReader {
                 employee.country = record.get("country");
                 employee.managerEmail = record.get("managerEmail");
                 employees.add(employee);
-                ReportConfig.CACHE.add(employee);
-                System.out.println("Loaded employee " + employee.name + " email=" + employee.email);
+                ReportConfig.addToCache(employee);
+                LOGGER.info(() -> "Loaded employee " + employee.name + " email=" + employee.email);
             }
         } catch (Exception e) {
+            LOGGER.warning("Failed to load CSV employees: " + e.getMessage());
         }
         return employees;
     }
